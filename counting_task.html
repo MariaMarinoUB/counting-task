@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Counting Task</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, sans-serif;
+    background: #f7f9fc;
+    color: #1a1a2e;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1f3864;
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  #topbar .label { opacity: 0.85; }
+  #timer-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 6px;
+    padding: 6px 14px;
+  }
+  #timer-label { font-size: 13px; opacity: 0.85; }
+  #timer {
+    font-size: 22px;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+    min-width: 52px;
+    text-align: center;
+  }
+  #timer.warning { color: #ff9a3c; }
+  #timer.danger  { color: #ff4d4d; animation: pulse 0.7s infinite alternate; }
+  @keyframes pulse { from { opacity: 1; } to { opacity: 0.5; } }
+
+  #score-box {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+  }
+  #score-box span { opacity: 0.85; }
+  #score-box strong { font-size: 16px; }
+
+  /* ── MAIN AREA ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  /* ── QUESTION PROMPT ── */
+  #prompt {
+    font-size: 15px;
+    color: #444;
+    text-align: center;
+  }
+
+  /* ── TABLE ── */
+  #table-wrapper {
+    background: #fff;
+    border: 1px solid #d0d9e8;
+    border-radius: 8px;
+    padding: 18px 22px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  #binary-table {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 17px;
+    line-height: 1.75;
+    letter-spacing: 3px;
+    color: #1a1a2e;
+    white-space: pre;
+    user-select: none;
+  }
+
+  /* ── INPUT ROW ── */
+  #input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #input-row label {
+    font-size: 15px;
+    color: #333;
+    white-space: nowrap;
+  }
+  #answer-input {
+    width: 90px;
+    padding: 8px 10px;
+    font-size: 18px;
+    text-align: center;
+    border: 2px solid #2e5090;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #answer-input:focus { border-color: #1f3864; }
+  #answer-input.shake {
+    animation: shake 0.3s;
+    border-color: #e74c3c;
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  #ok-btn {
+    padding: 9px 26px;
+    font-size: 15px;
+    font-weight: bold;
+    background: #2e5090;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  #ok-btn:hover:not(:disabled) { background: #1f3864; }
+  #ok-btn:active:not(:disabled) { transform: scale(0.97); }
+  #ok-btn:disabled { background: #999; cursor: not-allowed; }
+
+  /* ── FEEDBACK ── */
+  #feedback {
+    height: 22px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+  }
+  #feedback.correct { color: #27ae60; }
+  #feedback.wrong   { color: #e74c3c; }
+
+  /* ── END SCREEN ── */
+  #end-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 18px;
+    padding: 30px;
+    text-align: center;
+  }
+  #end-screen h2 { font-size: 24px; color: #1f3864; }
+  #end-screen p  { font-size: 16px; color: #444; max-width: 480px; }
+  .stat-grid {
+    display: flex;
+    gap: 40px;
+    margin: 10px 0;
+  }
+  .stat-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .stat-box .num {
+    font-size: 42px;
+    font-weight: bold;
+    color: #1f3864;
+  }
+  .stat-box .lbl {
+    font-size: 13px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  #end-note {
+    font-size: 14px;
+    color: #888;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="label">Counting Task</div>
+  <div id="score-box">
+    <span>Correct: <strong id="score-correct">0</strong></span>
+    <span>Attempted: <strong id="score-attempted">0</strong></span>
+  </div>
+  <div id="timer-box">
+    <span id="timer-label">Time remaining (sec):</span>
+    <span id="timer">180</span>
+  </div>
+</div>
+
+<!-- TASK AREA -->
+<div id="main">
+  <div id="prompt">How many ones are in the table?</div>
+  <div id="table-wrapper">
+    <div id="binary-table"></div>
+  </div>
+  <div id="input-row">
+    <label for="answer-input">Your answer:</label>
+    <input id="answer-input" type="number" min="0" max="999" autocomplete="off" placeholder="0">
+    <button id="ok-btn">OK</button>
+  </div>
+  <div id="feedback"></div>
+</div>
+
+<!-- END SCREEN -->
+<div id="end-screen">
+  <h2>Time is up!</h2>
+  <div class="stat-grid">
+    <div class="stat-box">
+      <span class="num" id="end-correct">0</span>
+      <span class="lbl">Correct</span>
+    </div>
+    <div class="stat-box">
+      <span class="num" id="end-attempted">0</span>
+      <span class="lbl">Attempted</span>
+    </div>
+  </div>
+  <p>Your score has been recorded. Please click <strong>Next</strong> in the survey above to continue.</p>
+  <div id="end-note">Do not close this window.</div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────
+const TOTAL_SECONDS = 180;   // 3 minutes
+const ROWS          = 10;
+const COLS          = 15;
+// ────────────────────────────────────────────────────────────────────
+
+let secondsLeft  = TOTAL_SECONDS;
+let correctCount = 0;
+let attempted    = 0;
+let currentAnswer = 0;
+let timerInterval = null;
+let taskDone      = false;
+
+const timerEl      = document.getElementById('timer');
+const tableEl      = document.getElementById('binary-table');
+const answerInput  = document.getElementById('answer-input');
+const okBtn        = document.getElementById('ok-btn');
+const feedbackEl   = document.getElementById('feedback');
+const scoreCorrect = document.getElementById('score-correct');
+const scoreAttempted = document.getElementById('score-attempted');
+
+// ── TABLE GENERATION ────────────────────────────────────────────────
+function generateTable() {
+  let rows = [];
+  let total = 0;
+  for (let r = 0; r < ROWS; r++) {
+    let row = '';
+    for (let c = 0; c < COLS; c++) {
+      const bit = Math.random() < 0.35 ? 1 : 0;  // ~35% ones, matching original task
+      row += bit;
+      total += bit;
+    }
+    rows.push(row);
+  }
+  return { rows, total };
+}
+
+function showTable() {
+  const { rows, total } = generateTable();
+  currentAnswer = total;
+  tableEl.textContent = rows.join('\n');
+  answerInput.value = '';
+  answerInput.focus();
+  feedbackEl.textContent = '';
+  feedbackEl.className = '';
+  answerInput.classList.remove('shake');
+}
+
+// ── TIMER ────────────────────────────────────────────────────────────
+function updateTimerDisplay() {
+  timerEl.textContent = secondsLeft;
+  timerEl.className = '';
+  if (secondsLeft <= 30) timerEl.classList.add('danger');
+  else if (secondsLeft <= 60) timerEl.classList.add('warning');
+}
+
+function endTask() {
+  taskDone = true;
+  clearInterval(timerInterval);
+
+  // hide task, show end screen
+  document.getElementById('main').style.display = 'none';
+  const endScreen = document.getElementById('end-screen');
+  endScreen.style.display = 'flex';
+  document.getElementById('end-correct').textContent   = correctCount;
+  document.getElementById('end-attempted').textContent = attempted;
+
+  // post message to parent LimeSurvey window
+  window.parent.postMessage({
+    type:      'taskComplete',
+    correct:   correctCount,
+    attempted: attempted
+  }, '*');
+}
+
+timerInterval = setInterval(function() {
+  secondsLeft--;
+  updateTimerDisplay();
+  if (secondsLeft <= 0) endTask();
+}, 1000);
+
+// ── SUBMIT ANSWER ────────────────────────────────────────────────────
+function submitAnswer() {
+  if (taskDone) return;
+  const val = parseInt(answerInput.value, 10);
+  if (isNaN(val) || val < 0) {
+    answerInput.classList.add('shake');
+    setTimeout(() => answerInput.classList.remove('shake'), 350);
+    return;
+  }
+
+  attempted++;
+  scoreAttempted.textContent = attempted;
+
+  if (val === currentAnswer) {
+    correctCount++;
+    scoreCorrect.textContent = correctCount;
+    feedbackEl.textContent = 'Correct!';
+    feedbackEl.className   = 'correct';
+  } else {
+    feedbackEl.textContent = 'Incorrect — the answer was ' + currentAnswer + '.';
+    feedbackEl.className   = 'wrong';
+    answerInput.classList.add('shake');
+    setTimeout(() => answerInput.classList.remove('shake'), 350);
+  }
+
+  // brief pause so feedback is visible, then next table
+  setTimeout(showTable, 600);
+}
+
+okBtn.addEventListener('click', submitAnswer);
+answerInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitAnswer();
+});
+
+// ── START ─────────────────────────────────────────────────────────────
+updateTimerDisplay();
+showTable();
+</script>
+</body>
+</html>
