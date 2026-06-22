@@ -196,10 +196,7 @@
 <!-- TOP BAR -->
 <div id="topbar">
   <div class="label">Counting Task</div>
-  <div id="score-box">
-    <span>Correct: <strong id="score-correct">0</strong></span>
-    <span>Attempted: <strong id="score-attempted">0</strong></span>
-  </div>
+  <div></div>
   <div id="timer-box">
     <span id="timer-label">Time remaining (sec):</span>
     <span id="timer">180</span>
@@ -217,22 +214,12 @@
     <input id="answer-input" type="number" min="0" max="999" autocomplete="off" placeholder="0">
     <button id="ok-btn">OK</button>
   </div>
-  <div id="feedback"></div>
+
 </div>
 
 <!-- END SCREEN -->
 <div id="end-screen">
   <h2>Time is up!</h2>
-  <div class="stat-grid">
-    <div class="stat-box">
-      <span class="num" id="end-correct">0</span>
-      <span class="lbl">Correct</span>
-    </div>
-    <div class="stat-box">
-      <span class="num" id="end-attempted">0</span>
-      <span class="lbl">Attempted</span>
-    </div>
-  </div>
   <p>Your score has been recorded. Please click <strong>Next</strong> in the survey above to continue.</p>
   <div id="end-note">Do not close this window.</div>
 </div>
@@ -255,9 +242,6 @@ const timerEl      = document.getElementById('timer');
 const tableEl      = document.getElementById('binary-table');
 const answerInput  = document.getElementById('answer-input');
 const okBtn        = document.getElementById('ok-btn');
-const feedbackEl   = document.getElementById('feedback');
-const scoreCorrect = document.getElementById('score-correct');
-const scoreAttempted = document.getElementById('score-attempted');
 
 // ── TABLE GENERATION ────────────────────────────────────────────────
 function generateTable() {
@@ -281,9 +265,6 @@ function showTable() {
   tableEl.textContent = rows.join('\n');
   answerInput.value = '';
   answerInput.focus();
-  feedbackEl.textContent = '';
-  feedbackEl.className = '';
-  answerInput.classList.remove('shake');
 }
 
 // ── TIMER ────────────────────────────────────────────────────────────
@@ -297,15 +278,8 @@ function updateTimerDisplay() {
 function endTask() {
   taskDone = true;
   clearInterval(timerInterval);
-
-  // hide task, show end screen
   document.getElementById('main').style.display = 'none';
-  const endScreen = document.getElementById('end-screen');
-  endScreen.style.display = 'flex';
-  document.getElementById('end-correct').textContent   = correctCount;
-  document.getElementById('end-attempted').textContent = attempted;
-
-  // post message to parent LimeSurvey window
+  document.getElementById('end-screen').style.display = 'flex';
   window.parent.postMessage({
     type:      'taskComplete',
     correct:   correctCount,
@@ -330,22 +304,8 @@ function submitAnswer() {
   }
 
   attempted++;
-  scoreAttempted.textContent = attempted;
-
-  if (val === currentAnswer) {
-    correctCount++;
-    scoreCorrect.textContent = correctCount;
-    feedbackEl.textContent = 'Correct!';
-    feedbackEl.className   = 'correct';
-  } else {
-    feedbackEl.textContent = 'Incorrect — the answer was ' + currentAnswer + '.';
-    feedbackEl.className   = 'wrong';
-    answerInput.classList.add('shake');
-    setTimeout(() => answerInput.classList.remove('shake'), 350);
-  }
-
-  // brief pause so feedback is visible, then next table
-  setTimeout(showTable, 600);
+  if (val === currentAnswer) correctCount++;
+  setTimeout(showTable, 200);
 }
 
 okBtn.addEventListener('click', submitAnswer);
