@@ -189,6 +189,69 @@
     color: #888;
     font-style: italic;
   }
+
+  /* ── INTRO SCREEN ── */
+  #intro-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 18px;
+    padding: 30px;
+    text-align: center;
+  }
+  #intro-screen h2 { font-size: 24px; color: #1f3864; }
+  #intro-screen p  { font-size: 15px; color: #444; max-width: 520px; line-height: 1.5; }
+  #example-table-wrapper {
+    background: #fff;
+    border: 1px solid #d0d9e8;
+    border-radius: 8px;
+    padding: 18px 22px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  #example-binary-table {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 17px;
+    line-height: 1.75;
+    letter-spacing: 3px;
+    color: #1a1a2e;
+    white-space: pre;
+    user-select: none;
+  }
+  #example-answer {
+    font-size: 16px;
+    font-weight: bold;
+    color: #1f3864;
+    background: #eef3fb;
+    border: 2px solid #2e5090;
+    border-radius: 6px;
+    padding: 8px 18px;
+    display: inline-block;
+  }
+  #start-btn {
+    padding: 11px 32px;
+    font-size: 16px;
+    font-weight: bold;
+    background: #2e5090;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 8px;
+  }
+  #start-btn:hover { background: #1f3864; }
+  #start-btn:active { transform: scale(0.97); }
+
+  /* ── WRONG ANSWER MESSAGE ── */
+  #try-again {
+    height: 22px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    color: #e74c3c;
+  }
 </style>
 </head>
 <body>
@@ -203,8 +266,30 @@
   </div>
 </div>
 
+<!-- INTRO / EXAMPLE SCREEN -->
+<div id="intro-screen">
+  <h2>How the task works</h2>
+  <p>You will see a table filled with 0s and 1s. Count how many <strong>1s</strong> appear in the table and type that number in the box below it.</p>
+  <p>Here is an example:</p>
+  <div id="example-table-wrapper">
+    <div id="example-binary-table">1101001010
+0100011001
+1110010101
+1100010001
+1111100011
+0110110010
+1110010101
+1000001000
+0110010010
+0111110110</div>
+  </div>
+  <p>In this example, the table contains <strong>50</strong> ones. So you would type <span id="example-answer">50</span> and click OK to move on.</p>
+  <p>You must answer each table correctly before you can move on to the next one. You will have <strong>3 minutes</strong> to solve as many tables as possible.</p>
+  <button id="start-btn">Start the task</button>
+</div>
+
 <!-- TASK AREA -->
-<div id="main">
+<div id="main" style="display:none;">
   <div id="prompt">How many ones are in the table?</div>
   <div id="table-wrapper">
     <div id="binary-table"></div>
@@ -214,7 +299,7 @@
     <input id="answer-input" type="number" min="0" max="999" autocomplete="off" placeholder="0">
     <button id="ok-btn">OK</button>
   </div>
-
+  <div id="try-again"></div>
 </div>
 
 <!-- END SCREEN -->
@@ -228,20 +313,25 @@
 // ── CONFIG ──────────────────────────────────────────────────────────
 const TOTAL_SECONDS = 180;   // 3 minutes
 const ROWS          = 10;
-const COLS          = 15;
+const COLS          = 10;
 // ────────────────────────────────────────────────────────────────────
 
-let secondsLeft  = TOTAL_SECONDS;
-let correctCount = 0;
-let attempted    = 0;
+let secondsLeft   = TOTAL_SECONDS;
+let correctCount  = 0;
+let attempted     = 0;
 let currentAnswer = 0;
 let timerInterval = null;
 let taskDone      = false;
+let taskStarted   = false;
+let tableIndex    = 0;
+let log           = [];   // { table_index, correct_answer, participant_answer, is_correct, timestamp_ms }
 
 const timerEl      = document.getElementById('timer');
 const tableEl      = document.getElementById('binary-table');
 const answerInput  = document.getElementById('answer-input');
 const okBtn        = document.getElementById('ok-btn');
+const tryAgainEl   = document.getElementById('try-again');
+const startBtn     = document.getElementById('start-btn');
 
 // ── TABLE GENERATION ────────────────────────────────────────────────
 function generateTable() {
@@ -260,6 +350,7 @@ function generateTable() {
 }
 
 function showTable() {
+  tableIndex++;
   const { rows, total } = generateTable();
   currentAnswer = total;
   tableEl.textContent = rows.join('\n');
@@ -283,19 +374,29 @@ function endTask() {
   window.parent.postMessage({
     type:      'taskComplete',
     correct:   correctCount,
-    attempted: attempted
+    attempted: attempted,
+    log:       JSON.stringify(log)
   }, '*');
 }
 
-timerInterval = setInterval(function() {
-  secondsLeft--;
+function startTask() {
+  taskStarted = true;
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('main').style.display = 'flex';
   updateTimerDisplay();
-  if (secondsLeft <= 0) endTask();
-}, 1000);
+  showTable();
+  timerInterval = setInterval(function() {
+    secondsLeft--;
+    updateTimerDisplay();
+    if (secondsLeft <= 0) endTask();
+  }, 1000);
+}
+
+startBtn.addEventListener('click', startTask);
 
 // ── SUBMIT ANSWER ────────────────────────────────────────────────────
 function submitAnswer() {
-  if (taskDone) return;
+  if (taskDone || !taskStarted) return;
   const val = parseInt(answerInput.value, 10);
   if (isNaN(val) || val < 0) {
     answerInput.classList.add('shake');
@@ -304,8 +405,28 @@ function submitAnswer() {
   }
 
   attempted++;
-  if (val === currentAnswer) correctCount++;
-  setTimeout(showTable, 200);
+
+  const isCorrect = (val === currentAnswer);
+  log.push({
+    table_index:         tableIndex,
+    correct_answer:      currentAnswer,
+    participant_answer:  val,
+    is_correct:          isCorrect,
+    t_ms:                TOTAL_SECONDS * 1000 - secondsLeft * 1000
+  });
+
+  if (isCorrect) {
+    correctCount++;
+    tryAgainEl.textContent = '';
+    setTimeout(showTable, 200);
+  } else {
+    // Wrong answer: do NOT advance. Let participant try again on the same table.
+    tryAgainEl.textContent = 'Not quite — please try again.';
+    answerInput.classList.add('shake');
+    setTimeout(() => answerInput.classList.remove('shake'), 350);
+    answerInput.value = '';
+    answerInput.focus();
+  }
 }
 
 okBtn.addEventListener('click', submitAnswer);
@@ -313,9 +434,10 @@ answerInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') submitAnswer();
 });
 
-// ── START ─────────────────────────────────────────────────────────────
-updateTimerDisplay();
-showTable();
+
+// ── INITIAL STATE ───────────────────────────────────────────────────
+timerEl.textContent = TOTAL_SECONDS;
+
 </script>
 </body>
 </html>
