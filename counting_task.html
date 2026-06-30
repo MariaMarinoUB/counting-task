@@ -284,7 +284,7 @@
 0111110110</div>
   </div>
   <p>In this example, the table contains <strong>50</strong> ones. So you would type <span id="example-answer">50</span> and click OK to move on.</p>
-  <p>You must answer each table correctly before you can move on to the next one. You will have <strong>3 minutes</strong> to solve as many tables as possible.</p>
+  <p>After you type your answer and click OK, you will automatically move on to the next table. You will have <strong>3 minutes</strong> to solve as many tables as possible.</p>
   <button id="start-btn">Start the task</button>
 </div>
 
@@ -415,18 +415,10 @@ function submitAnswer() {
     t_ms:                TOTAL_SECONDS * 1000 - secondsLeft * 1000
   });
 
-  if (isCorrect) {
-    correctCount++;
-    tryAgainEl.textContent = '';
-    setTimeout(showTable, 200);
-  } else {
-    // Wrong answer: do NOT advance. Let participant try again on the same table.
-    tryAgainEl.textContent = 'Not quite — please try again.';
-    answerInput.classList.add('shake');
-    setTimeout(() => answerInput.classList.remove('shake'), 350);
-    answerInput.value = '';
-    answerInput.focus();
-  }
+  if (isCorrect) correctCount++;
+
+  tryAgainEl.textContent = '';
+  setTimeout(showTable, 200);
 }
 
 okBtn.addEventListener('click', submitAnswer);
